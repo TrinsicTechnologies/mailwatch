@@ -165,10 +165,11 @@ if($url_submit == 'Add') {
     $list = 'blacklist';
     break;
   }
-  $sql  = 'REPLACE INTO '.$list.' (to_address, to_domain, from_address) VALUES';
+  $sql  = 'REPLACE INTO '.$list.' (to_address, to_domain, from_address, added_by) VALUES';
   $sql .= '(\''.mysql_escape_string($to_address);
   $sql .= '\',\''.mysql_escape_string($todomain);
-  $sql .= '\',\''.mysql_escape_string($url_from).'\')';
+  $sql .= '\',\''.mysql_escape_string($url_from);
+  $sql .= '\',\''.mysql_escape_string($myusername).'\')';
   @dbquery($sql);
   audit_log("Added ".$from." to ".$list." for ".$to_address);
   unset($from);
@@ -215,12 +216,16 @@ function build_table($sql,$list) {
   echo ' <tr>'."\n";
   echo '  <th>From</th>'."\n";
   echo '  <th>To</th>'."\n";
+  echo '  <th>Date Added</th>'."\n";
+  echo '  <th>Added By</th>'."\n";
   echo '  <th>Action</th>'."\n";
   echo ' </tr>'."\n";
   while($row=mysql_fetch_row($sth)) {
    echo ' <tr>'."\n";
    echo '  <td>'.$row[1].'</td>'."\n";
    echo '  <td>'.$row[2].'</td>'."\n";
+   echo '  <td>'.$row[3].'</td>'."\n";
+   echo '  <td>'.$row[4].'</td>'."\n";
    echo '  <td><a href="'.$_SERVER['PHP_SELF'].'?submit=Delete&amp;id='.$row[0].'&amp;list='.$list.'">Delete</a><td>'."\n";
    echo ' </tr>'."\n";
   }
@@ -322,11 +327,11 @@ echo '</table>
  <td class="blackwhitelist">
   <!-- Whitelist -->';
   
- build_table("SELECT id, from_address, to_address FROM whitelist WHERE ".$_SESSION['global_list']." ORDER BY to_address",'w');
+ build_table("SELECT id, from_address, to_address, DATE_FORMAT(timestamp, '".DATE_FORMAT."') AS date, added_by FROM whitelist WHERE ".$_SESSION['global_list']." ORDER BY to_address",'w');
  echo '</td>
  <td  class="blackwhitelist">
   <!-- Blacklist -->';
- build_table("SELECT id, from_address, to_address FROM blacklist WHERE ".$_SESSION['global_list']." ORDER BY to_address",'b'); 
+ build_table("SELECT id, from_address, to_address, timestamp, added_by FROM blacklist WHERE ".$_SESSION['global_list']." ORDER BY to_address",'b'); 
 echo '</td>
 </tr>
 </table>';
