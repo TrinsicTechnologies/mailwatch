@@ -1,1 +1,3 @@
 For at least the short term this can be considered as a completely seperate unauthorized, unsanctioned and unofficial fork of Mailwatch for MailScanner, (http://sourceforge.net/projects/mailwatch/).
+
+My Primary purpose for this fork is due to the need of an API and some core modifications to how data is presented and updated.
