@@ -233,6 +233,7 @@ CREATE TABLE users (
   highspamscore tinyint(4) default '0',
   noscan tinyint(1) default '0',
   quarantine_rcpt varchar(60) default NULL,
+  api_id varchar(100) default NULL,
   PRIMARY KEY  (username)
 ) TYPE=MyISAM;
 
