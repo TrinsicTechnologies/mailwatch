@@ -76,7 +76,10 @@ $sql = "
   CASE WHEN spamblacklisted>0 THEN '$yes' ELSE '$no' END AS 'Spam Blacklisted:',
   spamreport AS 'SpamAssassin Autolearn:',
   sascore AS 'SpamAssassin Score:',
-  spamreport AS 'Spam Report:',
+  spamreport AS 'Spam Report:'";
+
+if(get_conf_truefalse('MCPChecks')){
+ $sql .= "
   'Message Content Protection (MCP)' AS 'HEADER',
   CASE WHEN ismcp>0 THEN '$yes' ELSE '$no' END AS 'MCP:',
   CASE WHEN ishighmcp>0 THEN '$yes' ELSE '$no' END AS 'High Scoring MCP:',
@@ -84,7 +87,10 @@ $sql = "
   CASE WHEN mcpwhitelisted>0 THEN '$yes' ELSE '$no' END AS 'MCP Whitelisted:',
   CASE WHEN mcpblacklisted>0 THEN '$yes' ELSE '$no' END AS 'MCP Blacklisted:',
   mcpsascore AS 'MCP Score:',
-  mcpreport AS 'MCP Report:'
+  mcpreport AS 'MCP Report:'";
+}
+
+$sql .= "
  FROM
   maillog
  WHERE

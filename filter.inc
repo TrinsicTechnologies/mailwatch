@@ -54,19 +54,21 @@ class Filter {
   'spamblacklisted'	=>		"is Blacklisted (>0 = TRUE)",
   'sascore'		=>		"SpamAssassin Score",
   'spamreport'		=>		"Spam Report",
+  'virusinfected'	=>		"contained a Virus (>0 = TRUE)",
+  'nameinfected'	=>		"contained an Unacceptable Attachment (>0 = TRUE)",
+  'otherinfected'	=>		"contained other infections (>0 = TRUE)",
+  'report'		=>		"Virus Report",
+  'hostname'		=>		"MailScanner Hostname",
   'ismcp'               =>              "is MCP (>0 = TRUE)",
   'ishighmcp'           =>              "is High Scoring MCP (>0 = TRUE)",
   'issamcp'             =>              "is MCP accoding to SpamAssassin (>0 = TRUE)",
   'mcpwhitelisted'      =>              "is MCP Whitelisted (>0 = TRUE)",
   'mcpblacklisted'      =>              "is MCP Blacklisted (>0 = TRUE)",
   'mcpscore'            =>              "MCP Score",
-  'mcpreport'           =>              "MCP Report",
-  'virusinfected'	=>		"contained a Virus (>0 = TRUE)",
-  'nameinfected'	=>		"contained an Unacceptable Attachment (>0 = TRUE)",
-  'otherinfected'	=>		"contained other infections (>0 = TRUE)",
-  'report'		=>		"Virus Report",
-  'hostname'		=>		"MailScanner Hostname"
+  'mcpreport'           =>              "MCP Report"
  );
+
+
  var $reports = array();
  var $last_operator;
  var $last_column;

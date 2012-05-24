@@ -382,7 +382,7 @@ function get_whitelist($options)
   
   $start = 0;
   $msg_list = array();
-  $sql = "SELECT from_address, to_address FROM whitelist WHERE to_address LIKE ".escape("%@$domain");
+  $sql = "SELECT from_address, to_address, DATE_FORMAT( timestamp, '".DATE_FORMAT."' ) AS date, added_by FROM whitelist WHERE to_address LIKE ".escape("%@$domain");
 
   // possible MySQL conditions
   $possible_options = array("search_by", "search_operator", "search", "limitstart", "limitnum" );

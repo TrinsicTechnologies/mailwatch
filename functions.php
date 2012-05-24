@@ -222,8 +222,10 @@ echo '    <tr> <th colspan="2">Color Codes</th> </tr>'."\n";
 echo '    <tr> <td>Bad Content/Infected</TD> <td class="infected"></TD> </TR>'."\n";
 echo '    <tr> <td>Spam</td> <td class="spam"></td> </tr>'."\n";
 echo '    <tr> <td>High Spam</td> <td class="highspam"></td> </tr>'."\n";
-echo '    <tr> <td>MCP</td> <td class="mcp"></td> </tr>'."\n";
-echo '    <tr> <td>High MCP</td><td class="highmcp"></td></tr>'."\n";
+if(get_conf_truefalse('MCPChecks')){
+ echo '    <tr> <td>MCP</td> <td class="mcp"></td> </tr>'."\n";
+ echo '    <tr> <td>High MCP</td><td class="highmcp"></td></tr>'."\n";
+}
 echo '    <tr> <td>Whitelisted</td> <td class="whitelisted"></td> </tr>'."\n";
 echo '    <tr> <td>Blacklisted</td> <td class="blacklisted"></td> </tr>'."\n";
 echo '	  <tr> <td>Not Scanned</td> <td class="notscanned"></td> </tr>'."\n";
@@ -556,8 +558,11 @@ while($row = mysql_fetch_object($sth)) {
  echo ' <tr><td>Others:</td><td align="right">'.number_format($row->otherinfected).'</td><td align="right">'.$row->otherinfectedpercent.'%</td></tr>'."\n";
  echo ' <tr><td>Spam:</td><td align="right">'.number_format($row->spam).'</td><td align="right">'.$row->spampercent.'%</td></tr>'."\n";
  echo ' <tr><td style="white-space:nowrap">High Scoring Spam:</td><td align="right">'.number_format($row->highspam).'</td><td align="right">'.$row->highspampercent.'%</td></tr>'."\n";
- echo ' <tr><td>MCP:</td><td align="right">'.number_format($row->mcp).'</td><td align="right">'.$row->mcppercent.'%</td></tr>'."\n";
- echo ' <tr><td style="white-space:nowrap">High Scoring MCP:</td><td align="right">'.number_format($row->highmcp).'</td><td align="right">'.$row->highmcppercent.'%</td></tr>'."\n";
+ if(get_conf_truefalse('MCPChecks')){
+  echo ' <tr><td>MCP:</td><td align="right">'.number_format($row->mcp).'</td><td align="right">'.$row->mcppercent.'%</td></tr>'."\n";
+  echo ' <tr><td style="white-space:nowrap">High Scoring MCP:</td><td align="right">'.number_format($row->highmcp).'</td><td align="right">'.$row->highmcppercent.'%</td></tr>'."\n";
+ }
+
  echo '</table>'."\n";
 
  // Navigation links - put them into an array to allow them to be switched
