@@ -1,5 +1,24 @@
 <?php
 
+/*
+ MailWatch for MailScanner
+ Copyright (C) 2012  Brad Triem (brad@trinsictech.com)
+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+
+ You should have received a copy of the GNU General Public License
+ along with this program; if not, write to the Free Software
+ Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+*/
+
 require_once("./functions.php");
 
 // function for escaping and quoting mysql strings
@@ -31,12 +50,60 @@ function get_message_list($options)
 {
   global $domain;
   
+  // are there any other domain filters tied to this account
+  $sql = "SELECT filter FROM user_filters WHERE username = ".escape($options['username'])." AND active = 'Y'";
+  $results = dbquery( $sql );
+  $filter = "";
+  while( $row = mysql_fetch_object($results) )
+  {
+    // filters through the API should really only be domains and not strict email addresses.
+    // I could strip the domain from the email address but I beleive that a strict policy
+    // of filters for the administrator or domain administrator to be domain.com, should be
+    // enforced when querying message lists.
+    if ( strstr( '@', $row->filter ) )
+      continue;
+
+    $filter .= " 
+	OR to_address LIKE ".escape("%@".$row->filter)." 
+        OR from_address LIKE ".escape("%@".$row->filter);
+  }
+	
   $start = 0;
   $msg_list = array();
-  $sql = "SELECT id AS msg_id, from_address, from_domain, to_address, to_domain, clientip, subject, date, time, IF ( isspam = 0 AND ishighspam = 0, 'no', 'yes' ) AS isspam, IF ( virusinfected = 0 AND otherinfected = 0, 'no', 'yes' ) AS isvirus, nameinfected AS virusname, IF ( spamblacklisted = 0, 'no', 'yes' ) AS isblacklisted, IF ( spamwhitelisted = 0, 'no', 'yes' ) AS iswhitelisted, size, headers FROM maillog";
+  $sql = "
+    SELECT 
+      id AS msg_id, 
+      from_address, 
+      from_domain, 
+      to_address, 
+      to_domain, 
+      clientip, 
+      subject, 
+      date, 
+      time, 
+      IF ( 
+        isspam = 0 AND ishighspam = 0, 'no', 'yes' 
+      ) AS isspam, 
+      IF ( 
+        virusinfected = 0, 'no', 'yes' 
+      ) AS isvirus, 
+      report AS virusname, 
+      IF ( 
+        spamblacklisted = 0, 'no', 'yes' 
+      ) AS isblacklisted, 
+      IF ( 
+        spamwhitelisted = 0, 'no', 'yes' 
+      ) AS iswhitelisted, 
+      size, 
+      headers 
+    FROM maillog";
 
   // only display data to or from their domain
-  $sql .= " WHERE ( to_address LIKE ".escape("%@$domain")." OR from_address LIKE ".escape("%@$domain")." OR to_domain = ".escape($domain)." OR from_domain = ".escape($domain)." )";
+  $sql .= " 
+    WHERE 
+      ( to_address LIKE ".escape("%@$domain")." 
+        OR from_address LIKE ".escape("%@$domain")." 
+        $filter )";
 
   // possible MySQL conditions
   $possible_options = array("msg_id", "search_by", "search_operator", "search", "date_start", "date_end", "time_start", "time_end", "limitstart", "limitnum", "isspam", "isvirus", "isblacklisted", "iswhitelisted", "isquarantined");
@@ -54,14 +121,14 @@ function get_message_list($options)
       $possible_filters = array("", "all", "to_address", "to_domain", "from_address", "from_domain", "subject");
       if ( !in_array( $options['search_by'], $possible_filters ) )
       {
-        $msg_list['trinsic']['result'] = $options['search_by']." is an invalid search filter.";
+        $msg_list[JSON_HEADER]['result'] = $options['search_by']." is an invalid search filter.";
         return $msg_list;
       }
 
       // and valid search
       if ( $options['search'] == "" )
       {
-        $msg_list['trinsic']['result'] = "Search filter is empty.";
+        $msg_list[JSON_HEADER]['result'] = "Search filter is empty.";
         return $msg_list;
       }
       else
@@ -85,7 +152,7 @@ function get_message_list($options)
       }
       else
       {
-        $msg_list['trinsic']['result'] = $options['search_operator']." is an invalid search operator.";
+        $msg_list[JSON_HEADER]['result'] = $options['search_operator']." is an invalid search operator.";
         return $msg_list;
       }
     }
@@ -99,7 +166,7 @@ function get_message_list($options)
         $date_start = explode( '-', $options['date_start'] );
         if ( !checkdate( $date_start[1], $date_start[2], $date_start[0] ) )
         {
-          $msg_list['trinsic']['result'] = $options['date_start']." is an invalid date format(YYYY-MM-DD).";
+          $msg_list[JSON_HEADER]['result'] = $options['date_start']." is an invalid date format(YYYY-MM-DD).";
           return $msg_list;
         }
       }
@@ -110,7 +177,7 @@ function get_message_list($options)
         $date_end = explode( '-', $options['date_end'] );
         if ( !checkdate( $date_end[1], $date_end[2], $date_end[0] ) )
         {
-          $msg_list['trinsic']['result'] = $options['date_end']." is an invalid date format(YYYY-MM-DD).";
+          $msg_list[JSON_HEADER]['result'] = $options['date_end']." is an invalid date format(YYYY-MM-DD).";
           return $msg_list;
         }
       }
@@ -135,7 +202,7 @@ function get_message_list($options)
           || $time_start[0] < 0 || $time_start[0] > 24 || $time_start[1] < 0 
           || $time_start[1] > 59 || $time_start[2] < 0 || $time_start[2] > 59 )
         {
-          $msg_list['trinsic']['result'] = $options['time_start']." is an invalid time format(HH:MM:SS).";
+          $msg_list[JSON_HEADER]['result'] = $options['time_start']." is an invalid time format(HH:MM:SS).";
           return $msg_list;
         }
       }
@@ -148,7 +215,7 @@ function get_message_list($options)
           || $time_end[0] < 0 || $time_end[0] > 24 || $time_end[1] < 0 
           || $time_end[1] > 59 || $time_end[2] < 0 || $time_end[2] > 59 )
         {
-          $msg_list['trinsic']['result'] = $options['time_end']." is an invalid time format(HH:MM:SS).";
+          $msg_list[JSON_HEADER]['result'] = $options['time_end']." is an invalid time format(HH:MM:SS).";
           return $msg_list;
         }
       }
@@ -171,7 +238,7 @@ function get_message_list($options)
         $sql .= " AND isspam < 1";
       else
       {
-        $msg_list['trinsic']['result'] = "Invalid option for isspam.  isspam valid options are yes or no.";
+        $msg_list[JSON_HEADER]['result'] = "Invalid option for isspam.  isspam valid options are yes or no.";
         return $msg_list;
       }
     }
@@ -180,12 +247,12 @@ function get_message_list($options)
     if ( isset( $options['isvirus'] ) )
     {
       if ( $options['isvirus'] == "yes" )
-        $sql .= " AND ( virusinfected > 0 OR otherinfected > 0 )";
+        $sql .= " AND ( virusinfected > 0 )";
       else if ( $options['isvirus'] == "no" )
-        $sql .= " AND ( virusinfected < 1 AND otherinfected < 1 )";
+        $sql .= " AND ( virusinfected < 1 )";
       else
       {
-        $msg_list['trinsic']['result'] = "Invalid option for isvirus.  isvirus valid options are yes or no.";
+        $msg_list[JSON_HEADER]['result'] = "Invalid option for isvirus.  isvirus valid options are yes or no.";
         return $msg_list;
       }
     }
@@ -199,7 +266,7 @@ function get_message_list($options)
         $sql .= " AND spamblacklisted < 1";
       else
       {
-        $msg_list['trinsic']['result'] = "Invalid option for isblacklisted.  isblacklisted valid options are yes or no.";
+        $msg_list[JSON_HEADER]['result'] = "Invalid option for isblacklisted.  isblacklisted valid options are yes or no.";
         return $msg_list;
       }
     }
@@ -213,7 +280,7 @@ function get_message_list($options)
         $sql .= " AND spamwhitelisted < 1";
       else
       {
-        $msg_list['trinsic']['result'] = "Invalid option for iswhitelisted.  iswhitelisted valid options are yes or no.";
+        $msg_list[JSON_HEADER]['result'] = "Invalid option for iswhitelisted.  iswhitelisted valid options are yes or no.";
         return $msg_list;
       }
     }
@@ -227,7 +294,7 @@ function get_message_list($options)
         $sql .= " AND quarantined = 1";
       else
       {
-        $msg_list['trinsic']['result'] = "Invalid option for isquarantined.  isquarantined valid options are yes or no.";
+        $msg_list[JSON_HEADER]['result'] = "Invalid option for isquarantined.  isquarantined valid options are yes or no.";
         return $msg_list;
       }
     }
@@ -241,7 +308,7 @@ function get_message_list($options)
     {
       if ( ( isset( $options['limitstart'] ) && !is_numeric( $options['limitstart'] ) ) || ( isset( $options['limitnum'] ) && !is_numeric( $options['limitnum'] ) ) )
       {
-        $msg_list['trinsic']['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
+        $msg_list[JSON_HEADER]['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
         return $msg_list;
       }
 
@@ -264,13 +331,13 @@ function get_message_list($options)
     $sql .= " LIMIT 0, ".LIMITMAX;
 
   $results = dbquery($sql);
-  $msg_list['trinsic']['result'] = "success";
+  $msg_list[JSON_HEADER]['result'] = "success";
   $numrows = mysql_num_rows($results);
-  $msg_list['trinsic']['totalresults'] = $numrows;
-  $msg_list['trinsic']['startnumber'] = $start;
-  $msg_list['trinsic']['numreturned'] = $numrows;
+  $msg_list[JSON_HEADER]['totalresults'] = $numrows;
+  $msg_list[JSON_HEADER]['startnumber'] = $start;
+  $msg_list[JSON_HEADER]['numreturned'] = $numrows;
   while ( $row = mysql_fetch_array( $results, MYSQL_ASSOC ) )
-    $msg_list['trinsic']['messages'][] = $row;
+    $msg_list[JSON_HEADER]['messages'][] = $row;
 
   return $msg_list;
 }
@@ -280,9 +347,21 @@ function get_blacklist($options)
 {
   global $domain;
   
+  // are there any other domain filters tied to this account
+  $sql = "SELECT filter FROM user_filters WHERE username = ".escape($options['username'])." AND active = 'Y'";
+  $results = dbquery( $sql );
+  $filter = "";
+  while( $row = mysql_fetch_object($results) )
+  {
+    if ( strstr( '@', $row->filter ) )
+      continue;
+
+    $filter .= "OR to_address LIKE ".escape("%@".$row->filter);
+  }
+	
   $start = 0;
-  $msg_list = array();
-  $sql = "SELECT from_address, to_address FROM blacklist WHERE to_address LIKE ".escape("%@$domain");
+  $black_list = array();
+  $sql = "SELECT from_address, to_address FROM blacklist WHERE ( to_address LIKE ".escape("%@$domain")." $filter )";
 
   // possible MySQL conditions
   $possible_options = array("search_by", "search_operator", "search", "limitstart", "limitnum" );
@@ -300,15 +379,15 @@ function get_blacklist($options)
       $possible_filters = array( "", "all", "to_address", "from_address" );
       if ( !in_array( $options['search_by'], $possible_filters ) )
       {
-        $msg_list['trinsic']['result'] = $options['search_by']." is an invalid search filter.";
-        return $msg_list;
+        $black_list[JSON_HEADER]['result'] = $options['search_by']." is an invalid search filter.";
+        return $black_list;
       }
 
       // and valid search
       if ( $options['search'] == "" )
       {
-        $msg_list['trinsic']['result'] = "Search filter is empty.";
-        return $msg_list;
+        $black_list[JSON_HEADER]['result'] = "Search filter is empty.";
+        return $black_list;
       }
       else
         $search = $options['search'];
@@ -331,8 +410,8 @@ function get_blacklist($options)
       }
       else
       {
-        $msg_list['trinsic']['result'] = $options['search_operator']." is an invalid search operator.";
-        return $msg_list;
+        $black_list[JSON_HEADER]['result'] = $options['search_operator']." is an invalid search operator.";
+        return $black_list;
       }
     }
 
@@ -341,8 +420,8 @@ function get_blacklist($options)
     {
       if ( ( isset( $options['limitstart'] ) && !is_numeric( $options['limitstart'] ) ) || ( isset( $options['limitnum'] ) && !is_numeric( $options['limitnum'] ) ) )
       {
-        $msg_list['trinsic']['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
-        return $msg_list;
+        $black_list[JSON_HEADER]['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
+        return $black_list;
       }
 
       if ( isset( $options['limitstart'] ) && $options['limitstart'] >= 0 )
@@ -364,25 +443,37 @@ function get_blacklist($options)
     $sql .= " LIMIT 0, ".LIMITMAX;
 
   $results = dbquery($sql);
-  $msg_list['trinsic']['result'] = "success";
+  $black_list[JSON_HEADER]['result'] = "success";
   $numrows = mysql_num_rows($results);
-  $msg_list['trinsic']['totalresults'] = $numrows;
-  $msg_list['trinsic']['startnumber'] = $start;
-  $msg_list['trinsic']['numreturned'] = $numrows;
+  $black_list[JSON_HEADER]['totalresults'] = $numrows;
+  $black_list[JSON_HEADER]['startnumber'] = $start;
+  $black_list[JSON_HEADER]['numreturned'] = $numrows;
   while ( $row = mysql_fetch_array( $results, MYSQL_ASSOC ) )
-    $msg_list['trinsic']['blacklist'][] = $row;
+    $black_list[JSON_HEADER]['blacklist'][] = $row;
 
-  return $msg_list;
+  return $black_list;
 }
 
 // whiteliste retrieval
 function get_whitelist($options)
 {
   global $domain;
+
+  // are there any other domain filters tied to this account
+  $sql = "SELECT filter FROM user_filters WHERE username = ".escape($options['username'])." AND active = 'Y'";
+  $results = dbquery( $sql );
+  $filter = "";
+  while( $row = mysql_fetch_object($results) )
+  {
+    if ( strstr( '@', $row->filter ) )
+      continue;
+
+    $filter .= "OR to_address LIKE ".escape("%@".$row->filter);
+  }
   
   $start = 0;
-  $msg_list = array();
-  $sql = "SELECT from_address, to_address, DATE_FORMAT( timestamp, '".DATE_FORMAT."' ) AS date, added_by FROM whitelist WHERE to_address LIKE ".escape("%@$domain");
+  $white_list = array();
+  $sql = "SELECT from_address, to_address, DATE_FORMAT( timestamp, '".DATE_FORMAT."' ) AS date, added_by FROM whitelist WHERE ( to_address LIKE ".escape("%@$domain")." $filter )";
 
   // possible MySQL conditions
   $possible_options = array("search_by", "search_operator", "search", "limitstart", "limitnum" );
@@ -400,15 +491,15 @@ function get_whitelist($options)
       $possible_filters = array( "", "all", "to_address", "from_address" );
       if ( !in_array( $options['search_by'], $possible_filters ) )
       {
-        $msg_list['trinsic']['result'] = $options['search_by']." is an invalid search filter.";
-        return $msg_list;
+        $white_list[JSON_HEADER]['result'] = $options['search_by']." is an invalid search filter.";
+        return $white_list;
       }
 
       // and valid search
       if ( $options['search'] == "" )
       {
-        $msg_list['trinsic']['result'] = "Search filter is empty.";
-        return $msg_list;
+        $white_list[JSON_HEADER]['result'] = "Search filter is empty.";
+        return $white_list;
       }
       else
         $search = $options['search'];
@@ -431,8 +522,8 @@ function get_whitelist($options)
       }
       else
       {
-        $msg_list['trinsic']['result'] = $options['search_operator']." is an invalid search operator.";
-        return $msg_list;
+        $white_list[JSON_HEADER]['result'] = $options['search_operator']." is an invalid search operator.";
+        return $white_list;
       }
     }
 
@@ -441,8 +532,8 @@ function get_whitelist($options)
     {
       if ( ( isset( $options['limitstart'] ) && !is_numeric( $options['limitstart'] ) ) || ( isset( $options['limitnum'] ) && !is_numeric( $options['limitnum'] ) ) )
       {
-        $msg_list['trinsic']['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
-        return $msg_list;
+        $white_list[JSON_HEADER]['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
+        return $white_list;
       }
 
       if ( isset( $options['limitstart'] ) && $options['limitstart'] >= 0 )
@@ -464,44 +555,130 @@ function get_whitelist($options)
     $sql .= " LIMIT 0, ".LIMITMAX;
 
   $results = dbquery($sql);
-  $msg_list['trinsic']['result'] = "success";
+  $white_list[JSON_HEADER]['result'] = "success";
   $numrows = mysql_num_rows($results);
-  $msg_list['trinsic']['totalresults'] = $numrows;
-  $msg_list['trinsic']['startnumber'] = $start;
-  $msg_list['trinsic']['numreturned'] = $numrows;
+  $white_list[JSON_HEADER]['totalresults'] = $numrows;
+  $white_list[JSON_HEADER]['startnumber'] = $start;
+  $white_list[JSON_HEADER]['numreturned'] = $numrows;
   while ( $row = mysql_fetch_array( $results, MYSQL_ASSOC ) )
-    $msg_list['trinsic']['whitelist'][] = $row;
+    $white_list[JSON_HEADER]['whitelist'][] = $row;
 
-  return $msg_list;
+  return $white_list;
+}
+
+// whiteliste retrieval
+function get_user_list($options)
+{
+  global $domain;
+  
+  // are there any other domain filters tied to this account
+  $sql = "SELECT filter FROM user_filters WHERE username = ".escape($options['username'])." AND active = 'Y'";
+  $results = dbquery( $sql );
+  $filter = "";
+  while( $row = mysql_fetch_object($results) )
+  {
+    if ( strstr( '@', $row->filter ) )
+      continue;
+
+    $filter .= "OR username LIKE ".escape("%@".$row->filter); 
+  }
+	
+  $start = 0;
+  $user_list = array();
+  $sql = "SELECT username, fullname, type AS account_type, quarantine_report AS quarantine_frequencty, spamscore, highspamscore, noscan, quarantine_rcpt AS quarantine_override, api_id FROM users WHERE ( username LIKE ".escape("%@$domain")." $filter )";
+
+  // possible MySQL conditions
+  $possible_options = array("username", "limitstart", "limitnum" );
+  $found = FALSE;
+  foreach( $options as $key => $value )
+    if ( in_array( $key, $possible_options ) )
+      $found = TRUE;
+
+  if ( $found )
+  {
+    // filter by username
+    if ( isset( $options['user'] ) )
+        $sql .= " AND username = ".escape($options['user']);
+
+    // filter start and stop
+    if ( isset( $options['limitstart'] ) || isset( $options['limitnum'] ) )
+    {
+      if ( ( isset( $options['limitstart'] ) && !is_numeric( $options['limitstart'] ) ) || ( isset( $options['limitnum'] ) && !is_numeric( $options['limitnum'] ) ) )
+      {
+        $user_list[JSON_HEADER]['result'] = "Either limitstart or limitnum are invalid.  They must be numeric.";
+        return $user_list;
+      }
+
+      if ( isset( $options['limitstart'] ) && $options['limitstart'] >= 0 )
+        $start = $options['limitstart'];
+      else
+        $start = "0";
+
+      if ( isset( $options['limitnum'] ) && $options['limitnum'] > 0 )
+        $limit = $options['limitnum'] > LIMITMAX ? LIMITMAX : $options['limitnum'];
+      else
+        $limit = 25;
+
+      $sql .= " LIMIT $start, $limit";
+    }
+    else
+      $sql .= " LIMIT 0, ".LIMITMAX;
+  }
+  else
+    $sql .= " LIMIT 0, ".LIMITMAX;
+
+  $results = dbquery($sql);
+  $user_list[JSON_HEADER]['result'] = "success";
+  $numrows = mysql_num_rows($results);
+  $user_list[JSON_HEADER]['totalresults'] = $numrows;
+  $user_list[JSON_HEADER]['startnumber'] = $start;
+  $user_list[JSON_HEADER]['numreturned'] = $numrows;
+  $count = 0;
+  while ( $row = mysql_fetch_array( $results, MYSQL_ASSOC ) )
+  {
+    $user_list[JSON_HEADER]['users'][$count] = $row;
+    $sql = "SELECT filter, IF ( active = 'N', 'no', 'yes' ) AS active FROM user_filters WHERE username = ".escape($row['username']);
+    $filters = dbquery($sql);
+    while ( $filter = mysql_fetch_array( $filters, MYSQL_ASSOC ) )
+      $user_list[JSON_HEADER]['users'][$count]['filters'][] = $filter;
+
+    $count++;
+  }
+
+  return $user_list;
 }
 
 // for API authentication validation
 function validate_account( $username, $password, $api_id )
 {
-  //  using a unique secure API_ID is optional
+  // using a unique secure API_ID is optional
+  // user must be administrator or domain administrator to use API
   if ( REQUIRE_API_ID )
-    $result = dbquery( "SELECT * FROM users WHERE username=".escape($username)." AND password=".escape($password)." AND api_id=".escape($api_id) );
+    $result = dbquery( "SELECT * FROM users WHERE username=".escape($username)." AND password=".escape($password)." AND ( type='A' OR type='D' ) AND api_id=".escape($api_id) );
   else
-    $result = dbquery( "SELECT * FROM users WHERE username=".escape($username)." AND password=".escape($password) );
+    $result = dbquery( "SELECT * FROM users WHERE username=".escape($username)." AND password=".escape($password)." AND ( type='A' OR type='D' )" );
 
   if ( mysql_num_rows( $result ) > 0 )
     return "passed";
    
   $response = array();
-  $response['trinsic']['result'] = "API authentication failed.";
+  $response[JSON_HEADER]['result'] = "API authentication failed.";
   return $response;
 }
 
 $api_id = isset($_POST['api_id']) ? $_POST['api_id'] : "";
+// validate credentials of the API request
 $validated = validate_account( $_POST["username"], $_POST["password"], $api_id );
+
+// validation passed, do the work
 if ( $validated == "passed" )
 {
   // extract domain from username
-  $ar = explode( '@', $_POST["username"] );
-  $domain = $ar[1];
+  if ( ( !$domain = substr( $_POST["username"], strpos( $_POST["username"], '@' ) + 1 ) ) )
+    $domain = $_POST["username"];
 
   // possible API actions check
-  $possible_actions = array("get_messages", "get_blacklist", "get_whitelist");
+  $possible_actions = array("get_messages", "get_blacklist", "get_whitelist", "get_users");
   if ( isset( $_POST["action"] ) && in_array( $_POST["action"], $possible_actions ) )
   {
     switch ( $_POST["action"] )
@@ -515,6 +692,9 @@ if ( $validated == "passed" )
       case "get_whitelist":
         $value = get_whitelist($_POST);
         break;
+      case "get_users";
+        $value = get_user_list($_POST);
+        break;
       default:
         $value = "Invalid action specified.";
         break;
@@ -524,9 +704,9 @@ if ( $validated == "passed" )
   {
     $value = array();
     if ( !isset( $_POST["action"] ) || $_POST["action"] == "" )
-      $value['trinsic']['result'] = "Action not specified";
+      $value[JSON_HEADER]['result'] = "Action not specified";
     else
-      $value['trinsic']['result'] = $_POST["action"]." is an invalid action";
+      $value[JSON_HEADER]['result'] = $_POST["action"]." is an invalid action";
   }
 
   exit( json_encode( $value ) );

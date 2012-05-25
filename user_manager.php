@@ -22,9 +22,11 @@
 
 require_once("./functions.php");
 
+
 session_start();
 require('login.function.php');
 
+require_once("./secureuuid.class.php");
 html_start("User Manager",0,false,false);
 
 // Don't run on DefenderMX
@@ -107,6 +109,11 @@ else{
    $n_type        = mysql_escape_string($_GET['type']);
    $spamscore     = mysql_escape_string($_GET['spamscore']);
    $highspamscore = mysql_escape_string($_GET['highspamscore']);
+   if ( $n_type == "A" || $n_type == "D" )
+     $api_id 	  = uuidSecure();
+   else
+     $api_id	  = "";
+
    if(!isset($_GET['quarantine_report'])) {
     $quarantine_report = '0';
    } else {
@@ -118,7 +125,7 @@ else{
     $noscan = '0';
    }
    $quarantine_rcpt = mysql_escape_string($_GET['quarantine_rcpt']);
-   $sql = "INSERT INTO users (username, fullname, password, type, quarantine_report, spamscore, highspamscore, noscan, quarantine_rcpt) VALUES ('$n_username','$n_fullname','$n_password','$n_type','$quarantine_report','$spamscore','$highspamscore','$noscan','$quarantine_rcpt')";
+   $sql = "INSERT INTO users (username, fullname, password, type, quarantine_report, spamscore, highspamscore, noscan, quarantine_rcpt, api_id) VALUES ('$n_username','$n_fullname','$n_password','$n_type','$quarantine_report','$spamscore','$highspamscore','$noscan','$quarantine_rcpt','$api_id')";
    dbquery($sql);
    switch($n_type) {
     case 'A':
@@ -137,7 +144,7 @@ else{
   break;
  case 'edit':
   if(!isset($_GET['submit'])) {
-   $sql = "SELECT username, fullname, type, quarantine_report, quarantine_rcpt, spamscore, highspamscore, noscan FROM users WHERE username='".$_GET['id']."'";
+   $sql = "SELECT username, fullname, type, quarantine_report, quarantine_rcpt, spamscore, highspamscore, noscan, api_id FROM users WHERE username='".$_GET['id']."'";
    $result = dbquery($sql);
    $row = mysql_fetch_object($result);
    if($row->quarantine_report == 1) { $quarantine_report = "CHECKED"; }
@@ -160,6 +167,9 @@ else{
          <OPTION ".$s["U"]." VALUE=\"U\">User
          <OPTION ".$s["R"]." VALUE=\"R\">User (Regexp)
         </SELECT></TD></TR>\n";
+   if ( $row->type == "A" || $row->type == "D" )
+     echo " <TR><TD CLASS=\"heading\">API Secure ID:</TD><TD><font size=-2>".$row->api_id."</font><INPUT TYPE=\"hidden\" NAME=\"api_id\" VALUE=\"".$row->api_id."\"></TD></TR>\n";
+
    echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"quarantine_report\" $quarantine_report> <font size=-2>Send Daily Report?</font></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Quarantine Report Recipient:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"quarantine_rcpt\" VALUE=\"".$row->quarantine_rcpt."\"><br><font size=\"-2\">Override quarantine report recipient?<br>(uses your username if blank)</font></TD>\n";
    echo " <TR><TD CLASS=\"heading\">Scan for Spam:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"noscan\" $noscan> <font size=\"-2\">Scan eMail for Spam?</font></TD></TR>\n";
@@ -184,6 +194,11 @@ else{
    $n_type     = mysql_escape_string($_GET['type']);
    $spamscore     = mysql_escape_string($_GET['spamscore']);
    $highspamscore = mysql_escape_string($_GET['highspamscore']);
+   if ( $n_type == "A" || $n_type == "D" )
+     $api_id 	  = isset( $_GET['api_id'] ) ? $_GET['api_id'] : uuidSecure();
+   else
+     $api_id = "";
+
    if(!isset($_GET['quarantine_report'])) {
     $n_quarantine_report = '0';
    } else {
@@ -201,10 +216,10 @@ else{
 
    if($_GET['password'] !== 'XXXXXXXX') {
     // Password reset required
-    $sql = "UPDATE users SET username='$n_username', fullname='$n_fullname', password='$n_password', type='$n_type', quarantine_report='$n_quarantine_report', spamscore='$spamscore', highspamscore='$highspamscore', noscan='$noscan', quarantine_rcpt='$quarantine_rcpt' WHERE username='$key'";
+    $sql = "UPDATE users SET username='$n_username', fullname='$n_fullname', password='$n_password', type='$n_type', quarantine_report='$n_quarantine_report', spamscore='$spamscore', highspamscore='$highspamscore', noscan='$noscan', quarantine_rcpt='$quarantine_rcpt', api_id='$api_id' WHERE username='$key'";
     dbquery($sql);
    } else {
-    $sql = "UPDATE users SET username='$n_username', fullname='$n_fullname', type='$n_type', quarantine_report='$n_quarantine_report', spamscore='$spamscore', highspamscore='$highspamscore', noscan='$noscan', quarantine_rcpt='$quarantine_rcpt' WHERE username='$key'";
+    $sql = "UPDATE users SET username='$n_username', fullname='$n_fullname', type='$n_type', quarantine_report='$n_quarantine_report', spamscore='$spamscore', highspamscore='$highspamscore', noscan='$noscan', quarantine_rcpt='$quarantine_rcpt', api_id='$api_id' WHERE username='$key'";
     dbquery($sql);
    }
 

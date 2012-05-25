@@ -1,12 +1,12 @@
 <?php
 
 $url = "http://localhost/mailscanner/api.php";
-$username = "email@domain.com";
-$password = md5("yourpassword");
-$postfields["api_id"] = "api-id";
+$username = "brad@trinsictech.com";
+$password = md5("Sad1eTigg3rs");
+$postfields["api_id"] = "4562-TQ532-T4528Q459201-4052Z";
 $postfields["username"] = $username;
 $postfields["password"] = $password;
-$postfields["action"] = "get_whitelist";
+$postfields["action"] = "get_users";
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $url);
