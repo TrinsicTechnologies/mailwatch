@@ -89,7 +89,15 @@ echo "<TABLE CLASS=\"mail\" BORDER=\"0\" CELLPADDING=\"1\" CELLSPACING=\"1\">\n"
          <OPTION VALUE=\"D\">Domain Administrator
          <OPTION VALUE=\"A\">Administrator
         </SELECT></TD></TR>\n";
-   echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"quarantine_report\"> <font size=-2>Send Daily Report?</font></TD></TR>\n";
+   echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD>
+    <TD><SELECT NAME=\"quarantine_report\">
+         <OPTION VALUE=\"0\">Disable (no report)
+         <OPTION VALUE=\"1\">Hourly Report
+         <OPTION VALUE=\"3\">3 Hour Report
+         <OPTION VALUE=\"6\">6 Hour Report
+         <OPTION VALUE=\"12\">12 Hour Report
+         <OPTION VALUE=\"24\">Daily Report
+        </SELECT></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Quarantine Report Recipient:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"quarantine_rcpt\"><br><font size=\"-2\">Override quarantine report recipient?<BR>(uses your username if blank)</font></TD>\n";
    echo " <TR><TD CLASS=\"heading\">Scan for Spam:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"noscan\" CHECKED> <font size=\"-2\">Scan e-mail for Spam?</font></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Spam Score:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"spamscore\" VALUE=\"0\" size=\"4\"> <font size=\"-2\">0=Use Default</font></TD></TR>\n";
@@ -114,16 +122,8 @@ else{
    else
      $api_id	  = "";
 
-   if(!isset($_GET['quarantine_report'])) {
-    $quarantine_report = '0';
-   } else {
-    $quarantine_report = '1';
-   }
-   if(!isset($_GET['noscan'])) {
-    $noscan = '1';
-   } else {
-    $noscan = '0';
-   }
+   $quarantine_report = !isset($_GET['quarantine_report']) ? '0' : $_GET['quarantine_report'];
+   $noscan = !isset($_GET['noscan']) ? '1' : '0';
    $quarantine_rcpt = mysql_escape_string($_GET['quarantine_rcpt']);
    $sql = "INSERT INTO users (username, fullname, password, type, quarantine_report, spamscore, highspamscore, noscan, quarantine_rcpt, api_id) VALUES ('$n_username','$n_fullname','$n_password','$n_type','$quarantine_report','$spamscore','$highspamscore','$noscan','$quarantine_rcpt','$api_id')";
    dbquery($sql);
@@ -147,9 +147,9 @@ else{
    $sql = "SELECT username, fullname, type, quarantine_report, quarantine_rcpt, spamscore, highspamscore, noscan, api_id FROM users WHERE username='".$_GET['id']."'";
    $result = dbquery($sql);
    $row = mysql_fetch_object($result);
-   if($row->quarantine_report == 1) { $quarantine_report = "CHECKED"; }
    if($row->noscan == 0) { $noscan = "CHECKED"; }
    $s[$row->type] = "SELECTED";
+   $q[$row->quarantine_report] = "SELECTED";
    echo "<FORM METHOD=\"GET\" ACTION=\"user_manager.php\">\n";
    echo "<INPUT TYPE=\"HIDDEN\" NAME=\"action\" VALUE=\"edit\">\n";
    echo "<INPUT TYPE=\"HIDDEN\" NAME=\"key\" VALUE=\"".$row->username."\">\n";
@@ -170,7 +170,15 @@ else{
    if ( $row->type == "A" || $row->type == "D" )
      echo " <TR><TD CLASS=\"heading\">API Secure ID:</TD><TD><font size=-2>".$row->api_id."</font><INPUT TYPE=\"hidden\" NAME=\"api_id\" VALUE=\"".$row->api_id."\"></TD></TR>\n";
 
-   echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"quarantine_report\" $quarantine_report> <font size=-2>Send Daily Report?</font></TD></TR>\n";
+   echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD>
+    <TD><SELECT NAME=\"quarantine_report\">
+         <OPTION ".$q["0"]." VALUE=\"0\">Disable (no report)
+         <OPTION ".$q["1"]." VALUE=\"1\">Hourly Report
+         <OPTION ".$q["3"]." VALUE=\"3\">3 Hour Report
+         <OPTION ".$q["6"]." VALUE=\"6\">6 Hour Report
+         <OPTION ".$q["12"]." VALUE=\"12\">12 Hour Report
+         <OPTION ".$q["24"]." VALUE=\"24\">Daily Report
+        </SELECT></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Quarantine Report Recipient:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"quarantine_rcpt\" VALUE=\"".$row->quarantine_rcpt."\"><br><font size=\"-2\">Override quarantine report recipient?<br>(uses your username if blank)</font></TD>\n";
    echo " <TR><TD CLASS=\"heading\">Scan for Spam:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"noscan\" $noscan> <font size=\"-2\">Scan eMail for Spam?</font></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Spam Score:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"spamscore\" VALUE=\"".$row->spamscore."\" size=\"4\"> <font size=\"-2\">0=Use Default</font></TD></TR>\n";
@@ -199,16 +207,8 @@ else{
    else
      $api_id = "";
 
-   if(!isset($_GET['quarantine_report'])) {
-    $n_quarantine_report = '0';
-   } else {
-    $n_quarantine_report = '1';
-   }
-   if(!isset($_GET['noscan'])) {
-    $noscan = '1';
-   } else {
-    $noscan = '0';
-   }
+   $n_quarantine_report = !isset($_GET['quarantine_report']) ? '0' : $_GET['quarantine_report'];
+   $noscan = !isset($_GET['noscan']) ? '1' : '0';
    $quarantine_rcpt = mysql_escape_string($_GET['quarantine_rcpt']);
 
    // Record old user type to audit user type promotion/demotion
@@ -318,9 +318,9 @@ echo "<a href=\"?action=new\">New User</a>\n";
    $sql = "SELECT username, fullname, type, quarantine_report, spamscore, highspamscore, noscan, quarantine_rcpt FROM users WHERE username='".$_SESSION['myusername']."'";
    $result = dbquery($sql);
    $row = mysql_fetch_object($result);
-   if($row->quarantine_report == 1) { $quarantine_report = "CHECKED"; }
    if($row->noscan == 0) { $noscan = "CHECKED"; }
    $s[$row->type] = "SELECTED";
+   $q[$row->quarantine_report] = "SELECTED";
    echo "<FORM METHOD=\"GET\" ACTION=\"user_manager.php\">\n";
    echo "<INPUT TYPE=\"HIDDEN\" NAME=\"action\" VALUE=\"edit\">\n";
    echo "<INPUT TYPE=\"HIDDEN\" NAME=\"key\" VALUE=\"".$row->username."\">\n";
@@ -331,8 +331,15 @@ echo "<a href=\"?action=new\">New User</a>\n";
    echo " <TR><TD CLASS=\"heading\">Name:</TD><TD>".$_SESSION['fullname']."</TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Password:</TD><TD><INPUT TYPE=\"PASSWORD\" NAME=\"password\" VALUE=\"XXXXXXXX\"></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Password:</TD><TD><INPUT TYPE=\"PASSWORD\" NAME=\"password1\" VALUE=\"XXXXXXXX\"></TD></TR>\n";
-
-   echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"quarantine_report\" $quarantine_report> <font size=\"-2\">Send Daily Report?</font></TD></TR>\n";
+   echo " <TR><TD CLASS=\"heading\">Quarantine Report:</TD>
+    <TD><SELECT NAME=\"quarantine_report\">
+         <OPTION ".$q["0"]." VALUE=\"0\">Disable (no report)
+         <OPTION ".$q["1"]." VALUE=\"1\">Hourly Report
+         <OPTION ".$q["3"]." VALUE=\"3\">3 Hour Report
+         <OPTION ".$q["6"]." VALUE=\"6\">6 Hour Report
+         <OPTION ".$q["12"]." VALUE=\"12\">12 Hour Report
+         <OPTION ".$q["24"]." VALUE=\"24\">Daily Report
+        </SELECT></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Quarantine Report Recipient:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"quarantine_rcpt\" VALUE=\"".$row->quarantine_rcpt."\"><br><font size=\"-2\">Override quarantine report recipient?<br>(uses your username if blank)</font></TD>\n";
    echo " <TR><TD CLASS=\"heading\">Scan for Spam:</TD><TD><INPUT TYPE=\"CHECKBOX\" NAME=\"noscan\" $noscan> <font size=\"-2\">Scan e-mail for Spam?</font></TD></TR>\n";
    echo " <TR><TD CLASS=\"heading\">Spam Score:</TD><TD><INPUT TYPE=\"TEXT\" NAME=\"spamscore\" VALUE=\"".$row->spamscore."\" size=\"4\"> <font size=\"-2\">0=Use Default</font></TD></TR>\n";
@@ -353,16 +360,8 @@ else{
    $n_password    = mysql_escape_string($_GET['password']);
    $spamscore     = mysql_escape_string($_GET['spamscore']);
    $highspamscore = mysql_escape_string($_GET['highspamscore']);
-   if(!isset($_GET['quarantine_report'])) {
-    $n_quarantine_report = '0';
-   } else {
-    $n_quarantine_report = '1';
-   }
-   if(!isset($_GET['noscan'])) {
-    $noscan = '1';
-   } else {
-    $noscan = '0';
-   }
+   $n_quarantine_report = !isset($_GET['quarantine_report']) ? '0' : $_GET['quarantine_report'];
+   $noscan = !isset($_GET['noscan']) ? '1' : '0';
    $quarantine_rcpt = mysql_escape_string($_GET['quarantine_rcpt']);
 
    if($_GET['password'] !== 'XXXXXXXX') {

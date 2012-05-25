@@ -232,7 +232,7 @@ CREATE TABLE users (
   spamscore tinyint(4) default '0',
   highspamscore tinyint(4) default '0',
   noscan tinyint(1) default '0',
-  quarantine_rcpt varchar(60) default NULL,
+  quarantine_rcpt enum('0','1','3','6','12','24') default '0',
   api_id varchar(100) default NULL,
   PRIMARY KEY  (username)
 ) TYPE=MyISAM;
